@@ -1,12 +1,11 @@
 # AMD Radeon 890M (48GB) Public Benchmark Evidence & Candidate Evaluation Dossier
 
 **Target Card**: AMD Radeon 890M (48 GB Unified Memory, RDNA 3.5 / gfx1150)
-**Primary Candidates**:
-- Candidate A: `lfm2.5-2.6b` (`LiquidAI/LFM2.5-2.6B-GGUF@84022ce711b28455e8c4fc364ce68c00cf995875`)
-- Candidate B: `qwen3.5-9b` (`unsloth/Qwen3.5-9B-GGUF@3885219b6810b007914f3a7950a8d1b469d598a5`)
+**Primary Candidate**: `lfm2.5-2.6b` (`LiquidAI/LFM2.5-2.6B-GGUF@84022ce711b28455e8c4fc364ce68c00cf995875`)
+**Fallback Candidate**: `qwen3.5-9b` (`unsloth/Qwen3.5-9B-GGUF@3885219b6810b007914f3a7950a8d1b469d598a5`)
 **Launch Profiles**:
-- `registry/launches/llama.cpp-vulkan-lfm2.5-2.6b-qad-q4-0-128k.json`
-- `registry/launches/llama.cpp-vulkan-qwen3.5-9b-q4-k-m-128k.json`
+- Primary: `registry/launches/llama.cpp-vulkan-lfm2.5-2.6b-qad-q4-0-128k.json`
+- Fallback: `registry/launches/llama.cpp-vulkan-qwen3.5-9b-q4-k-m-128k.json`
 **Card Definition**: `registry/cards/amd/radeon-890m-48gb.json`
 **Evaluation Status**: Pre-Execution Technical Evidence & Candidate Evaluation Dossier
 
@@ -17,10 +16,13 @@
 This technical document compiles verified public benchmark data, hardware architectural characteristics, exact memory calculations, and reproduction commands for deploying registered candidate models at 128K context (`131,072` tokens) on the AMD Radeon 890M integrated GPU (48 GB unified memory configuration).
 
 This dossier supports Pull Request [#294](https://github.com/sybil-solutions/local-ai-registry/pull/294) as a complete, transparent engineering submission:
-- **No physical six-gate run has been performed by this submission**. The candidate profiles and card definition are presented as an infrastructure proposal.
-- **No synthetic or unmeasured run records** have been created in `data/lab-runs/`.
-- **No unverified recipe file** has been committed to `registry/recipes/` without passing all six official gates (`load`, `chat`, `reasoning`, `tools`, `context`, `speed`).
-- The bounty speed acceptance threshold specified in Issue #223 is **$\ge 15.0\text{ tok/s}$**. The speed gate is classified as **NOT VERIFIED**. Public estimates below 15 tok/s represent analytical projections and do not establish an actual measured failure.
+- **Primary Candidate Selection**: `lfm2.5-2.6b` is promoted as the primary candidate to test first because:
+  1. Its pinned `QAD-Q4_0` artifact is substantially smaller ($1.59\text{ GB}$ vs $5.68\text{ GB}$ for Qwen3.5-9B), reducing memory bus bandwidth pressure on a 128-bit bus.
+  2. Its native context is $131,072\text{ tokens}$, satisfying the mandatory context floor (`KV_FLOOR_TOKENS = 131072`).
+  3. The accepted Apple M1 recipe (`registry/recipes/apple/apple-m1-8gb/lfm2.5-2.6b.llama.cpp.8k.json`) records $21.7$ and $17.4\text{ tok/s}$ and passed all six gates in its own 8K configuration.
+- **Important Disclosure**: None of these facts establishes six-gate success on the Radeon 890M at 128K context. All 128K Radeon 890M gates remain **NOT VERIFIED**.
+- **No Physical Execution Asserted**: No physical six-gate run has been performed by the author for this submission. No synthetic run records or unverified recipe files have been committed.
+- **Bounty Acceptance Threshold**: Issue #223 mandates a decode throughput of **$\ge 15.0\text{ tok/s}$**. The speed gate is classified as **NOT VERIFIED**. Public estimates do not establish an actual measured pass or failure.
 
 ---
 
@@ -31,9 +33,9 @@ Issue #223 defines the completion condition:
 
 ### Speed Gate Classification: NOT VERIFIED
 - **Acceptance Requirement**: $\ge 15.0\text{ tok/s}$ sustained decode throughput.
-- **Analytical Projections by Candidate**:
-  - **Qwen3.5-9B (5.68 GB weights)**: Projected at $\approx 12.27\text{--}13.05\text{ tok/s}$ (stock clocks) to $\approx 14.21\text{ tok/s}$ (clock-locked 2.9 GHz). Due to memory bandwidth limits on the 128-bit bus, reaching $\ge 15.0\text{ tok/s}$ is a severe bottleneck.
-  - **LFM2.5-2.6B (1.59 GB weights)**: Projected at $\approx \mathbf{43.8\text{ tok/s}}$ under the same memory bus efficiency ($\frac{69.7\text{ GB/s}}{1.59\text{ GB}}$), easily surpassing the $15.0\text{ tok/s}$ threshold with a $+192\%$ safety margin.
+- **Candidate Performance Estimates**:
+  - **LFM2.5-2.6B (1.59 GB weights)**: A hypothetical weight-size-based streaming proxy ($\frac{69.70\text{ GB/s}}{1.59\text{ GB}} \approx 43.8\text{ tok/s}$) suggests strong bandwidth headroom, but this figure is purely an analytical proxy, not a measured or guaranteed runtime result. Cross-device CPU benchmarks on Apple M1 record $17.4\text{--}21.7\text{ tok/s}$. Actual throughput on Radeon 890M Vulkan remains unverified.
+  - **Qwen3.5-9B (5.68 GB weights)**: Current analytical estimates ($\approx 12.27\text{--}13.05\text{ tok/s}$ stock, $\approx 14.21\text{ tok/s}$ clock-locked) are below the $15.0\text{ tok/s}$ threshold; actual performance on the physical device remains unverified.
 - **Methodological Distinction**:
   - These values are mathematical throughput projections based on model weight streaming across an estimated effective memory bus.
   - They **do not prove an actual pass**, nor do they **establish an actual measured failure**.
@@ -62,31 +64,26 @@ The AMD Radeon 890M is the integrated graphics processor of the AMD Ryzen AI 300
 
 ## 4. Candidate Model Comparison & Analysis
 
-| Evaluation Metric | Candidate A: `lfm2.5-2.6b` (Recommended) | Candidate B: `qwen3.5-9b` |
-| :--- | :--- | :--- |
-| **Exact Registered Revision** | `LiquidAI/LFM2.5-2.6B-GGUF@84022ce711b28455e8c4fc364ce68c00cf995875` | `unsloth/Qwen3.5-9B-GGUF@3885219b6810b007914f3a7950a8d1b469d598a5` |
-| **GGUF File & Quantization** | `LFM2.5-2.6B-QAD-Q4_0.gguf` (`QAD-Q4_0`) | `Qwen3.5-9B-Q4_K_M.gguf` (`Q4_K_M`) |
-| **Verified File Size** | **$1,593,894,944\text{ bytes}$** ($1.59\text{ GB}$) | **$5,680,522,464\text{ bytes}$** ($5.68\text{ GB}$) |
-| **LFS SHA-256 Digest** | `a247afd6414918eac8e520a9e6137dc271235461ecbe1180462221d5b8d40b03` | `03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8` |
-| **Native Context Length** | **$131,072\text{ tokens}$** ($128\text{K}$) | **$131,072\text{ tokens}$** ($128\text{K}$) |
-| **KV Floor Compliance** | **PASS** ($131,072 \ge 131,072\text{ floor}$) | **PASS** ($131,072 \ge 131,072\text{ floor}$) |
-| **Reasoning Gate (Gate 3)** | **Compatible**: Built-in `<think>` tokens parsed via `--reasoning-format deepseek`. Passed in `apple-m1-8gb` recipe. | **Compatible**: Built-in `<think>` tokens parsed via `--reasoning-format deepseek`. |
-| **Tools Gate (Gate 4)** | **Compatible**: Standard non-streaming single-function call (`get_weather(city="Paris")`). Immune to streaming quote bug. Passed in `apple-m1-8gb` recipe. | **Compatible**: Standard JSON function calling. |
-| **Process Memory at 128K** | **$\approx 3.19\text{ GB}$ (Q4_0 KV) / $\approx 4.74\text{ GB}$ (FP16 KV)** | **$\approx 8.14\text{ GB}$ (Q4_0 KV) / $\approx 11.23\text{ GB}$ (FP16 KV)** |
-| **Headroom on 48 GB APU** | **$>43\text{ GB free}$** | **$>36\text{ GB free}$** |
-| **Projected Decode Speed** | **$\approx 43.8\text{ tok/s}$** ($+192\%$ over 15 tok/s threshold) | **$\approx 12.3\text{--}13.1\text{ tok/s}$** (Falls below 15 tok/s threshold) |
-| **Primary Technical Risk** | Vulkan kernel execution of LFM2 short convolutions on `gfx1150`. | Inherent physical bandwidth bottleneck failing the $\ge 15\text{ tok/s}$ speed gate. |
-
-### Why LFM2.5-2.6B is Technically Superior for Bounty #223
-1. **Speed Gate Feasibility**: Qwen3.5-9B requires streaming $5.68\text{ GB}$ per token, which requires $85.2\text{ GB/s}$ of effective memory bandwidth to hit $15\text{ tok/s}$. The stock Radeon 890M only achieves $\approx 69.7\text{ GB/s}$ ($58.1\%$ efficiency). Conversely, LFM2.5-2.6B only requires $23.9\text{ GB/s}$ to achieve $15\text{ tok/s}$, projecting to $\approx 43.8\text{ tok/s}$.
-2. **Context and Floor Qualification**: Unlike other sub-9B models in the registry (e.g. Gemma 4 12B or Bonsai 2 9B, which have context limits capped at 32K or 64K), LFM2.5-2.6B has a native $131,072\text{-token}$ context window, satisfying `KV_FLOOR_TOKENS = 131072`.
-3. **Repository Precedent**: `lfm2.5-2.6b` already has an accepted modern six-gate recipe in the registry on an 8 GB device (`registry/recipes/apple/apple-m1-8gb/lfm2.5-2.6b.llama.cpp.8k.json`), confirming that its reasoning, tools, and context output formats cleanly pass `lab.py`'s verification suite.
+| Evaluation Metric | Candidate 1: `lfm2.5-2.6b` (Primary) | Candidate 2: `lfm2.5-8b-a1b` (MoE) | Candidate 3: `qwen3.5-9b` (Fallback) |
+| :--- | :--- | :--- | :--- |
+| **Exact Registered Revision** | `LiquidAI/LFM2.5-2.6B-GGUF@84022ce711b28455e8c4fc364ce68c00cf995875` | `LiquidAI/LFM2.5-8B-A1B-GGUF@49c14831707011e64d70b2ebd8462ba08d608434` | `unsloth/Qwen3.5-9B-GGUF@3885219b6810b007914f3a7950a8d1b469d598a5` |
+| **GGUF File & Quantization** | `LFM2.5-2.6B-QAD-Q4_0.gguf` (`QAD-Q4_0`) | `LFM2.5-8B-A1B-Q4_K_M.gguf` (`Q4_K_M`) | `Qwen3.5-9B-Q4_K_M.gguf` (`Q4_K_M`) |
+| **Exact Weight Size** | **$1,593,894,944\text{ bytes}$** ($1.59\text{ GB}$) | $5,540,515,840\text{ bytes}$ ($5.16\text{ GB}$) | **$5,680,522,464\text{ bytes}$** ($5.68\text{ GB}$) |
+| **LFS SHA-256 Digest** | `a247afd6414918eac8e520a9e6137dc271235461ecbe1180462221d5b8d40b03` | `33671239...` (pinned in models.json) | `03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8` |
+| **Native Context Length** | **$131,072\text{ tokens}$** ($128\text{K}$) | **$128,000\text{ tokens}$** (from `config.json`) | **$131,072\text{ tokens}$** ($128\text{K}$) |
+| **KV Floor Compliance** | **PASS** ($131,072 \ge 131,072\text{ floor}$) | **DISCREPANCY**: $128,000 < 131,072\text{ floor}$ unless formally resolved | **PASS** ($131,072 \ge 131,072\text{ floor}$) |
+| **Reasoning Gate (Gate 3)** | **Model-level compatibility demonstrated** on Apple M1 (`apple-m1-8gb`). 890M Vulkan: **NOT VERIFIED**. | Unverified; no existing recipe in registry. | Model-level compatibility demonstrated on other AMD GPUs. 890M Vulkan: **NOT VERIFIED**. |
+| **Tools Gate (Gate 4)** | **Model-level compatibility demonstrated** on Apple M1 (`apple-m1-8gb`). Non-streaming `chat()` avoids streaming parser edge-cases. 890M Vulkan: **NOT VERIFIED**. | Unverified; no existing recipe in registry. | Model-level compatibility demonstrated on other AMD GPUs. 890M Vulkan: **NOT VERIFIED**. |
+| **Total Process Memory (128K)**| $\approx 3.19\text{ GB}$ (Q4_0 KV) / $\approx 4.74\text{ GB}$ (FP16 KV) | $\approx 7.5\text{--}9.8\text{ GB}$ (Analytical estimate) | $\approx 8.14\text{ GB}$ (Q4_0 KV) / $\approx 11.23\text{ GB}$ (FP16 KV) |
+| **Headroom on 48 GB APU** | $>43\text{ GB free}$ | $>38\text{ GB free}$ | $>36\text{ GB free}$ |
+| **Speed Gate Status (>= 15 tok/s)**| **NOT VERIFIED**. Measured 17.4–21.7 tok/s on Apple M1 CPU. 890M unverified. | **NOT VERIFIED**. MoE dispatch behavior on Vulkan unverified. | **NOT VERIFIED**. Current analytical estimate is below threshold; actual performance unverified. |
+| **Primary Technical Risk** | Vulkan kernel execution of LFM2 short convolutions on `gfx1150`. | Native context ($128,000$) fails 131,072 floor; MoE routing stability on Vulkan. | Memory bandwidth bottleneck on 128-bit bus. |
 
 ---
 
 ## 5. Memory Footprint Analysis: Calculations, Assumptions & Unmeasured Quantities
 
-### 5.1 Candidate A (`lfm2.5-2.6b`) Memory Breakdown at 128K
+### 5.1 Primary Candidate (`lfm2.5-2.6b`) Memory Breakdown at 128K
 - **Weights**: Exactly **$1,593,894,944\text{ bytes}$** ($1.59\text{ GB}$).
 - **Full-Attention KV Cache (8 layers, 8 KV heads, head dim 64, 131,072 tokens)**:
   $$\text{Elements} = 8\text{ layers} \times 2\text{ (K + V)} \times 8\text{ heads} \times 64\text{ head\_dim} \times 131,072 = 1,073,741,824\text{ elements}$$
@@ -99,7 +96,7 @@ The AMD Radeon 890M is the integrated graphics processor of the AMD Ryzen AI 300
   - Q4_0 KV: $1.59 + 0.60 + 0.001 + 1.0\text{ (workspace)} \approx \mathbf{3.19\text{ GB}}$
   - Available Headroom on 48 GB Card: $\mathbf{>43\text{ GB free (89.9\% margin)}}$.
 
-### 5.2 Candidate B (`qwen3.5-9b`) Memory Breakdown at 128K
+### 5.2 Fallback Candidate (`qwen3.5-9b`) Memory Breakdown at 128K
 - **Weights**: Exactly **$5,680,522,464\text{ bytes}$** ($5.68\text{ GB}$).
 - **Full-Attention KV Cache (8 layers, 4 KV heads, head dim 256, 131,072 tokens)**:
   - FP16 KV: $\mathbf{4.000\text{ GiB}}\;(4.295\text{ GB})$
@@ -117,9 +114,9 @@ The AMD Radeon 890M is the integrated graphics processor of the AMD Ryzen AI 300
 - **Benchmark Run**: LLaMA-2-7B Q4_0 (3.825 GB model file) achieved **18.22 tok/s**.
 - **Effective Weight Bandwidth**:
   $$\text{BW}_{\text{eff}} = 18.22\text{ tok/s} \times 3.825\text{ GB} = 69.70\text{ GB/s}\;(58.1\%\text{ of 120.0 GB/s peak})$$
-- **Analytical Projections**:
-  - `lfm2.5-2.6b` (1.59 GB): $\frac{69.70\text{ GB/s}}{1.59\text{ GB}} \approx \mathbf{43.8\text{ tok/s}}$ ($\ge 15.0\text{ tok/s}$ gate satisfied).
-  - `qwen3.5-9b` (5.68 GB): $\frac{69.70\text{ GB/s}}{5.68\text{ GB}} \approx \mathbf{12.27\text{ tok/s}}$ (Falls short of 15.0 tok/s gate).
+- **Analytical Projections (Hypothetical Estimates Only)**:
+  - `lfm2.5-2.6b` (1.59 GB): A simple weight-size streaming proxy ($\frac{69.70\text{ GB/s}}{1.59\text{ GB}} \approx 43.8\text{ tok/s}$) suggests favorable bandwidth margins, but does not substitute for physical execution.
+  - `qwen3.5-9b` (5.68 GB): Current proxy estimate is $\frac{69.70\text{ GB/s}}{5.68\text{ GB}} \approx 12.27\text{ tok/s}$, which falls below the $15.0\text{ tok/s}$ threshold; actual performance on the device is unverified.
 
 ### 6.2 Direct Clock-Locked Radeon 890M Benchmark
 - **Source**: [chris-youngblut-solutions/gfx1150-bench](https://github.com/chris-youngblut-solutions/gfx1150-bench)
@@ -128,8 +125,9 @@ The AMD Radeon 890M is the integrated graphics processor of the AMD Ryzen AI 300
   - Qwen3-4B Q4_K_M (2.49 GB): 32.41 tok/s $\implies 80.70\text{ GB/s}$ effective bandwidth ($67.2\%$ bus efficiency).
   - Qwen2.5-Coder-14B Q4_K_M (8.99 GB): 9.30 tok/s $\implies 83.60\text{ GB/s}$ effective bandwidth.
 - **Analytical Projections**:
-  - `lfm2.5-2.6b` (1.59 GB): $\frac{80.70\text{ GB/s}}{1.59\text{ GB}} \approx \mathbf{50.75\text{ tok/s}}$.
-  - `qwen3.5-9b` (5.68 GB): $\frac{80.70\text{ GB/s}}{5.68\text{ GB}} \approx \mathbf{14.21\text{ tok/s}}$.
+  - `lfm2.5-2.6b` (1.59 GB): $\frac{80.70\text{ GB/s}}{1.59\text{ GB}} \approx 50.75\text{ tok/s}$ (clock-locked proxy).
+  - `qwen3.5-9b` (5.68 GB): $\frac{80.70\text{ GB/s}}{5.68\text{ GB}} \approx 14.21\text{ tok/s}$ (clock-locked proxy).
+- **Limitations**: Forced-clock profiles are noncompliant with standard stock-clock registry evaluations.
 
 ---
 
@@ -138,7 +136,7 @@ The AMD Radeon 890M is the integrated graphics processor of the AMD Ryzen AI 300
 > [!WARNING]
 > **UNEXECUTED ON PHYSICAL HARDWARE**: The following commands are verified against `lab.py`'s argument parser, URL concatenation logic, and container entrypoints, but have **NOT** yet been executed on a physical AMD Radeon 890M machine.
 
-### Option 1: Primary Candidate — LFM2.5-2.6B (High Speed Feasibility)
+### Option 1: Primary Candidate — LFM2.5-2.6B
 
 #### Step 1 — Download Candidate Weights & Verify Integrity
 ```bash
